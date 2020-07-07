@@ -1,14 +1,55 @@
-import {src, dest} from 'gulp'
-import glob from 'glob'
-import prettify from 'gulp-html-prettify'
+import { src, dest, task as gulpTask } from 'gulp'
+import { isDevelop, realname, targetPath } from '../helpers';
+import { preprocessor, processAsset } from './../plugins/preprocessor'
+import { reload } from 'browser-sync'
+import rename from 'gulp-rename';
 import gulpIf from 'gulp-if';
-import { isDevelop, sourcePath, targetPath } from '../helpers';
 import htmlmin from 'gulp-htmlmin';
-import { preprocessor } from './../plugins/preprocessor'
+import prettify from 'gulp-html-prettify'
 
-export default function html(cb) {
-  return src(glob.sync(sourcePath('pages/**/*.html')))
+function isHome(file) {
+  return file.basename === 'home.html';
+}
+
+function htmlIndexer(structure, filesHTMLIndex) {
+  // Cuando en el watch se detecta como null, representa a un archivo principal
+  filesHTMLIndex[structure.path] = null
+
+  // indexando el template
+  if (filesHTMLIndex.hasOwnProperty(structure.template)) {
+    filesHTMLIndex[structure.template].push(structure.path)
+  } else {
+    filesHTMLIndex[structure.template] = [structure.path]
+  }
+
+  for (const file of structure.includes) {
+    // indexando los includes
+    if (filesHTMLIndex.hasOwnProperty(file)) {
+      filesHTMLIndex[file].push(structure.path)
+    } else {
+      filesHTMLIndex[file] = [structure.path]
+    }
+  }
+
+  return filesHTMLIndex
+}
+
+function html(filepath, target = '') {
+  return (cb) => {
+    return src(filepath)
       .pipe(preprocessor())
       .pipe(gulpIf(isDevelop(), prettify(), htmlmin({ collapseWhitespace: true })))
-      .pipe(dest(targetPath('public')))
+      .pipe(gulpIf(isHome, rename('index.html')))
+      .pipe(dest(targetPath(`${target}`)))
+      .pipe(processAsset({ min: !isDevelop() }))
+      .pipe(reload({ stream: true }))
+  }
 }
+
+function task(obj) {
+  const taskname = realname(obj.name) + '::html'
+  gulpTask(taskname, html(obj.path, ''))
+  return taskname
+}
+
+export { task, html, htmlIndexer }
