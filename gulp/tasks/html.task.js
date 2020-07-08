@@ -1,6 +1,6 @@
 import { src, dest, task as gulpTask } from 'gulp'
 import { isDevelop, realname, targetPath } from '../helpers';
-import { preprocessor, processAsset } from './../plugins/preprocessor'
+import { preprocessor, processAsset } from '../plugins/handleHtmlScripts'
 import { reload } from 'browser-sync'
 import rename from 'gulp-rename';
 import gulpIf from 'gulp-if';
@@ -34,7 +34,7 @@ function htmlIndexer(structure, filesHTMLIndex) {
   return filesHTMLIndex
 }
 
-function html(filepath, target = '') {
+function task(filepath, target = '') {
   return (cb) => {
     return src(filepath)
       .pipe(preprocessor())
@@ -46,9 +46,9 @@ function html(filepath, target = '') {
   }
 }
 
-function task(obj) {
+function html(obj) {
   const taskname = realname(obj.name) + '::html'
-  gulpTask(taskname, html(obj.path, ''))
+  gulpTask(taskname, task(obj.path, ''))
   return taskname
 }
 

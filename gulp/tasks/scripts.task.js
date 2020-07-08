@@ -1,5 +1,5 @@
 import { src, dest, task as gulpTask } from 'gulp';
-import { sourcePath, isDevelop, targetPath } from '../helpers'
+import { sourcePath, isDevelop, targetPath, scriptsPath, basePath } from '../helpers'
 import rename from 'gulp-rename'
 import { init, write } from 'gulp-sourcemaps'
 import webpack from 'webpack-stream'
@@ -27,9 +27,11 @@ function script(files = [], target = '') {
 
 function task(name, scripts) {
     const taskname = `${name}::scripts`
+
     const files = scripts
-        .filter((item) => item.path.includes(sourcePath()))
-        .map((item) => item.path);
+        .filter((item) => {
+            return item.path.includes(sourcePath())
+        }).map((item) => item.path);
 
     if (files.length === 0) {
         return null

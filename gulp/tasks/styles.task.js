@@ -38,7 +38,7 @@ function task(name, styles) {
     if (files.length === 0) {
         return null
     }
-    console.log(files)
+
     gulpTask(taskname, style(files, ''))
 
     return {taskname, files};

@@ -50,7 +50,7 @@ export const webpack = {
 }
 
 export const browserSync = {
-    open: env('SERVER_OPEN', true),
+    open: env('SERVER_OPEN', false),
     port: env('SERVER_PORT', 8080),
     server: {
         baseDir: targetPath()

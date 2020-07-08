@@ -4,7 +4,7 @@ class Home {
   private className: string
 
   constructor() {
-    this.className = 'Home editado'
+    this.className = 'Home editado numero 23457'
   }
 
   say(): void {
