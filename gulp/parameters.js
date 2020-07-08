@@ -1,4 +1,4 @@
-import { isDevelop, env } from "./helpers"
+import { isDevelop, env, targetPath } from "./helpers"
 import { resolve } from "path"
 
 export const sass = {
@@ -47,4 +47,15 @@ export const webpack = {
             }
         ]
     }
+}
+
+export const browserSync = {
+    open: env('SERVER_OPEN', false),
+    port: env('SERVER_PORT', 8080),
+    server: {
+        baseDir: targetPath()
+    }
+    // proxy: {
+    //     target: env('SERVER_PROXY', 'http://localhost/')
+    // }
 }
