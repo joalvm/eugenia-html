@@ -1,5 +1,7 @@
+import Index from './../../templates/index'
 class Search {
   private button: JQuery<HTMLButtonElement>
+  private className: string = 'Search Class actualizado'
 
   constructor() {
     this.button = $('#btn')
@@ -12,10 +14,11 @@ class Search {
   }
 
   goToHome(event: JQuery.ClickEvent) {
-    console.log(event, []);
+    alert("hola mundo!")
   }
 }
 
 jQuery(function () {
-  new Search()
+  (new Search());
+  (new Index());
 })

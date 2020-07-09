@@ -16,7 +16,7 @@ import {
 } from 'gulp-sourcemaps'
 import { reload } from 'browser-sync';
 
-function style(files, target = '') {
+function task(files, target = '') {
     return (cb) => {
         return src(files)
             .pipe(gulpIf(isDevelop(), sourcemapInit(sourcemap.init)))
@@ -29,19 +29,28 @@ function style(files, target = '') {
     }
 }
 
-function task(name, styles) {
+function style(name, styles) {
     const taskname = `${name}::styles`
-    const files = styles
-        .filter((item) => item.path.includes(sourcePath()))
-        .map((item) => item.path);
+    const files = styles.filter((item) => item.path.includes(sourcePath()))
+                        .map((item) => item.path);
 
     if (files.length === 0) {
         return null
     }
 
-    gulpTask(taskname, style(files, ''))
+    gulpTask(taskname, task(files, ''))
 
-    return {taskname, files};
+    return { taskname, files };
 }
 
-export { style, task }
+function indexer(files, bucket) {
+    for (const file of files) {
+        if (!bucket.includes(file)) {
+            bucket.push(file)
+        }
+    }
+
+    return bucket
+}
+
+export { style, task, indexer }
