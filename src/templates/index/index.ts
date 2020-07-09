@@ -1,8 +1,9 @@
-class Index {
+export default class Index {
     private className: string
 
     constructor() {
-        this.className = ''
-        console.log(this.className)        
+        this.className = 'soy el index editado'
+        console.log(this.className)     
     }
 }
+

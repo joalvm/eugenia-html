@@ -1,45 +1,53 @@
+import { relative} from 'path'
+import { webpack as webpackParams } from './../parameters'
 import { src, dest, task as gulpTask } from 'gulp';
-import { sourcePath, isDevelop, targetPath, scriptsPath, basePath } from '../helpers'
-import rename from 'gulp-rename'
+import { sourcePath, isDevelop, scriptsPath, basePath } from '../helpers'
 import { init, write } from 'gulp-sourcemaps'
-import webpack from 'webpack-stream'
-import named from 'vinyl-named'
-import gulpIf from 'gulp-if';
 import { reload } from 'browser-sync'
+import gulpIf from 'gulp-if';
+import rename from 'gulp-rename'
+import compileWebpack from './../plugins/compileWebpack'
 import {
     sourcemap,
-    rename as renameParams,
-    webpack as webpackParams
+    rename as renameParams
 } from './../parameters'
 
-function script(files = [], target = '') {
+
+function task(files = [], target = '') {
     return (cb) => {
-        return src(files)
-            .pipe(gulpIf(isDevelop(), init(sourcemap.init)))
-            .pipe(named())
-            .pipe(webpack(webpackParams))
+        files = files.map(item => relative(basePath(), item))
+
+        return src(files, {root: basePath()})
+            .pipe(init(sourcemap.init))
+            .pipe(compileWebpack(webpackParams))
             .pipe(rename(renameParams))
-            .pipe(gulpIf(isDevelop(), write(sourcemap.write)))
-            .pipe(dest(targetPath(`static/js/${target}`)))
+            .pipe(write(sourcemap.write))
+            .pipe(dest(scriptsPath(target)))
             .pipe(reload({ stream: true }))
     }
 }
 
-function task(name, scripts) {
+function script(name, scripts = []) {
     const taskname = `${name}::scripts`
+    const files = scripts.filter(
+        (item) => item.path.includes(sourcePath())
+    ).map((item) => item.path)
 
-    const files = scripts
-        .filter((item) => {
-            return item.path.includes(sourcePath())
-        }).map((item) => item.path);
+    if (files.length === 0) return null
 
-    if (files.length === 0) {
-        return null
-    }
+    gulpTask(taskname, task(files, ''))
 
-    gulpTask(taskname, script(files, ''))
-
-    return { taskname, files };
+    return { taskname, files }
 }
 
-export { script, task }
+function indexer(files, bucket) {
+    for (const file of files) {
+        if (!bucket.includes(file)) {
+            bucket.push(file)
+        }
+    }
+
+    return bucket
+}
+
+export { script, task, indexer }

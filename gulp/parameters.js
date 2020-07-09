@@ -27,10 +27,15 @@ export const sourcemap = {
 export const webpack = {
     mode: env('APP_ENV'),
     devtool: 'source-map',
-    stats: 'none',
+    watch: false,
+    cache: false,
+    target: 'web',
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
         extensions: [".ts", ".tsx", ".js"]
+    },
+    devServer: {
+        lazy: true
     },
     module: {
         rules: [
@@ -39,7 +44,7 @@ export const webpack = {
                 exclude: /node_modules/,
                 include: resolve(__dirname, '..', 'src'),
                 use: {
-                    loader: 'ts-loader',
+                    loader: require.resolve('ts-loader'),
                     options: {
                         transpileOnly: true
                     }
@@ -50,7 +55,7 @@ export const webpack = {
 }
 
 export const browserSync = {
-    open: env('SERVER_OPEN', false),
+    open: env('SERVER_OPEN', false) === 'true',
     port: env('SERVER_PORT', 8080),
     server: {
         baseDir: targetPath()

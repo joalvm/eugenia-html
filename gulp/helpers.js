@@ -40,6 +40,13 @@ export function targetPath(path) {
     )
 }
 
+export function publicPath(path = '') {
+    return resolve(
+        targetPath(env('OUTPUT_PUBLIC_PATH', './')),
+        normalize(path)
+    )
+}
+
 export function staticPath(path = '') {
     return resolve(
         targetPath(env('OUTPUT_ASSETS_DIRECTORY', 'static')),
@@ -49,7 +56,7 @@ export function staticPath(path = '') {
 
 export function htmlPath(path = '') {
     return resolve(
-        targetPath(env('OUTPUT_HTML_DIRECTORY')),
+        targetPath(env('OUTPUT_PUBLIC_DIRECTORY')),
         normalize(path)
     )
 }
@@ -72,6 +79,10 @@ export function normalizePath(path, basePath) {
     return resolve(normalize(dirname(basePath)), normalize(path))
 }
 
+/**
+ * Obtiene el nombre de un archivo sin la extensión
+ * @param {string} path filename
+ */
 export function realname(path) {
     return basename(path.split('.').slice(0, -1).join('.'));
 }
@@ -111,5 +122,11 @@ export function copyAsset(from = '', to = '') {
         }
 
         copyFileSync(from, to)
+
+        const map = `${from}.map`;
+
+        if (existsSync(map) && isDevelop()) {
+            copyFileSync(map, `${to}.map`)
+        }
     }
 }
