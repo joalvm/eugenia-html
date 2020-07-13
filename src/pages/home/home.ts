@@ -1,10 +1,8 @@
-import header from './../../layouts/header/header'
-
 class Home {
   private className: string
 
   constructor() {
-    this.className = 'Home'
+    this.className = 'Hola mundo 2!'
   }
 
   say(): void {

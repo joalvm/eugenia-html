@@ -1,16 +1,32 @@
 import { normalize, resolve, relative, dirname, basename } from 'path'
 import { readFileSync, existsSync, copyFileSync, mkdirSync } from 'fs'
+import config from './../config'
+import { get } from 'lodash'
 
 require('dotenv').config()
 
-export function env (key, _default = null) {
-    return process.env[key] || _default
+export function env(key, _default = null) {
+    return get(config, key, _default)
+}
+
+export function isUrl(str) {
+    return /^http(s)?:\/\/(.+)\.(\w+)$/gi.test(str)
+}
+
+export function environment() {
+    return process.argv
+        .slice(3)
+        .includes('--production') ? 'production' : 'development'
 }
 
 export function isDevelop() {
-    return env('APP_ENV') === 'development'
+    return environment() === 'development'
 }
 
+/**
+ * Raiz del proyecto.
+ * @param {string} path 
+ */
 export function basePath(path = '') {
     return resolve(
         normalize(resolve(__dirname, '..')),
@@ -18,64 +34,110 @@ export function basePath(path = '') {
     )
 }
 
-export function sourcePath(path) {
+/**
+ * Directorio donde estan los archivos de desarrollo.
+ * @param {string} path 
+ */
+export function sourcePath(path = '') {
     return resolve(
         normalize(resolve(__dirname, '..')),
         normalize(
-            path 
-                ? resolve(env('SOURCE_PATH'), path)
-                : env('SOURCE_PATH')
+            path ? resolve(env('source'), path) : env('source')
         )
     )
 }
 
-export function targetPath(path) {
+/**
+ * verifica la existencia del nombre del template y su archivo principal
+ * @param {string} name 
+ */
+export function templatePath(name = '') {
+    let path = sourcePath(env('input.templates', 'templates') + `/${name}`)
+
+    if (!existsSync(path)) {
+        return null
+    }
+
+    const first = `${path}/index.html`
+    const second = `${path}/${name}.html`
+
+    if (existsSync(first)) {
+        return first
+    } else if (existsSync(second)) {
+        return second
+    } else {
+        return null
+    }
+}
+
+/**
+ * Directorio de distribución para los archivos transpilados
+ * @param {string} path 
+ */
+export function targetPath(path = '') {
     return resolve(
         normalize(resolve(__dirname, '..')),
         normalize(
-            path 
-                ? resolve(env('TARGET_PATH', 'dist'), path)
-                : env('TARGET_PATH', 'dist')
+            path
+                ? resolve(env('target', 'dist'), path)
+                : env('target', 'dist')
         )
     )
 }
 
+/**
+ * Directorio publico de los archivos transpilados
+ * @param {string} path 
+ */
 export function publicPath(path = '') {
     return resolve(
-        targetPath(env('OUTPUT_PUBLIC_PATH', './')),
+        targetPath(env('output.public_dir', '')),
         normalize(path)
     )
 }
 
+/**
+ * Directorio de destino dentro del directorio de distribución
+ * para los archivos estaticos js, css, img, fonts, etc.
+ * @param {string} path 
+ */
 export function staticPath(path = '') {
     return resolve(
-        targetPath(env('OUTPUT_ASSETS_DIRECTORY', 'static')),
+        targetPath(env('output.assets.name', 'static')),
         normalize(path)
     )
 }
 
-export function htmlPath(path = '') {
-    return resolve(
-        targetPath(env('OUTPUT_PUBLIC_DIRECTORY')),
-        normalize(path)
-    )
-}
-
+/**
+ * Directorio de destino dentro del directorio de distribución
+ * para los archivos javascript
+ * @param {string} path 
+ */
 export function scriptsPath(path = '') {
     return resolve(
-        staticPath(env('OUTPUT_SCRIPTS_DIRECTORY')),
+        staticPath(env('output.assets.directories.scripts')),
         normalize(path)
     )
 }
 
+/**
+ * Directorio de destino dentro del directorio de distribución
+ * para los archivos de estilo css
+ * @param {string} path 
+ */
 export function stylesPath(path = '') {
     return resolve(
-        staticPath(env('OUTPUT_STYLES_DIRECTORY')),
+        staticPath(env('output.assets.directories.styles')),
         normalize(path)
     )
 }
 
-export function normalizePath(path, basePath) {
+/**
+ * Resuelve una ruta basandose en otra, normalizando a ambos primero
+ * @param {string} path 
+ * @param {string} basePath 
+ */
+export function resolvePath(path, basePath) {
     return resolve(normalize(dirname(basePath)), normalize(path))
 }
 
@@ -87,29 +149,48 @@ export function realname(path) {
     return basename(path.split('.').slice(0, -1).join('.'));
 }
 
-export function getFile(path, basePath = '') {
-    return readFileSync(
-        basePath ? normalizePath(path, basePath) : path
-    ).toString()
+/**
+ * Obtiene el contenido de un archivo.
+ * @param {string} path
+ */
+export function getFile(path = '') {
+    return readFileSync(path, {encoding: 'utf8'}).toString()
 }
 
 export function normalizeScriptPath(mainPath = '') {
-    const path = relative(htmlPath(), scriptsPath())
-    const filename = basename(mainPath).replace('.ts', '.js')
+    const path = relative(publicPath(), scriptsPath())
+    let filename = basename(mainPath).replace(
+        '.ts',
+        isDevelop() ? '.js' : '.min.js'
+    )
 
+    // Solo aquellos con ruta relativa son manipulados
+    if (isUrl(mainPath)) {
+        return mainPath
+    }
+
+    // Copia primero los assets que se encuentran en vendor
     if (mainPath.match(/node_modules/gi)) {
-        copyAsset(mainPath, scriptsPath(filename))
+        filename = copyAsset(mainPath, scriptsPath(filename))
     }
 
     return `./${path}/${filename}`
 }
 
 export function normalizeStylePath(mainPath = '') {
-    const path = relative(htmlPath(), stylesPath())
-    const filename = basename(mainPath).replace('.scss', '.css')
+    const path = relative(publicPath(), stylesPath())
+    let filename = basename(mainPath).replace(
+        '.scss',
+        isDevelop() ? '.css' : '.min.css'
+    )
+
+    // Solo aquellos con ruta relativa son manipulados
+    if (isUrl(mainPath)) {
+        return mainPath
+    }
 
     if (mainPath.match(/node_modules/gi)) {
-        copyAsset(mainPath, stylesPath(filename))
+        filename = copyAsset(mainPath, stylesPath(filename))
     }
 
     return `./${path}/${filename}`
@@ -117,16 +198,32 @@ export function normalizeStylePath(mainPath = '') {
 
 export function copyAsset(from = '', to = '') {
     if (!existsSync(to)) {
+        const fromMap = `${from}.map`
+        const fromMin = from.replace(/\.js$/, '.min.js').replace(/\.css$/, '.min.css')
+        const existsMin = existsSync(fromMin)
+
         if (!existsSync(dirname(to))) {
-            mkdirSync(dirname(to), {recursive: true})
+            mkdirSync(dirname(to), { recursive: true })
         }
 
-        copyFileSync(from, to)
+        to = (existsMin && !isDevelop())
+            ? to.replace(/\.js$/, '.min.js').replace(/\.css$/, '.min.css')
+            : to
 
-        const map = `${from}.map`;
+        copyFileSync((existsMin && !isDevelop()) ? fromMin : from, to)
 
-        if (existsSync(map) && isDevelop()) {
-            copyFileSync(map, `${to}.map`)
+        if (existsSync(fromMap) && isDevelop()) {
+            copyFileSync(fromMap, `${to}.map`)
         }
+    }
+
+    return basename(to)
+}
+
+export function reportError(error) {
+    try {
+        console.log(['REPORT ERROR', error])
+    } catch (ex) {
+
     }
 }

@@ -1,56 +1,86 @@
-import { src, dest, task as gulpTask } from 'gulp';
-import { sourcePath, isDevelop, targetPath } from '../helpers'
+import { src, dest, task as GulpTask, watch as GulpWatch } from 'gulp';
+import { init as sourcemapInit, write as sourcemapWrite } from 'gulp-sourcemaps'
+import { sourcePath, isDevelop, stylesPath } from '../helpers'
+import { reload } from 'browser-sync'
 import sass from 'gulp-sass'
 import gulpIf from 'gulp-if';
 import rename from 'gulp-rename';
-import autoPrefixer from 'gulp-autoprefixer';
+import autoPrefixer from 'gulp-autoprefixer'
+import Structure from './../Components/Structure'
 import {
-    autoprefixer as autoPrefixerParams,
-    sourcemap,
-    sass as sassParams,
-    rename as renameParams
+  autoprefixer as autoPrefixerParams,
+  sourcemap,
+  sass as sassParams,
+  rename as renameParams
 } from '../parameters'
-import {
-    init as sourcemapInit,
-    write as sourcemapWrite
-} from 'gulp-sourcemaps'
-import { reload } from 'browser-sync';
 
-function task(files, target = '') {
-    return (cb) => {
-        return src(files)
-            .pipe(gulpIf(isDevelop(), sourcemapInit(sourcemap.init)))
-            .pipe(sass(sassParams).on('error', sass.logError))
-            .pipe(rename(renameParams))
-            .pipe(autoPrefixer(autoPrefixerParams))
-            .pipe(gulpIf(isDevelop(), sourcemapWrite(sourcemap.write)))
-            .pipe(dest(targetPath(`static/css/${target}`)))
-            .pipe(reload({stream: true}))
-    }
-}
+export default class Styles {
+  /**
+   *
+   * @param {Structure} structure
+   */
+  constructor(structure) {
+    this.structure = structure
+    this.index = []
+  }
 
-function style(name, styles) {
-    const taskname = `${name}::styles`
-    const files = styles.filter((item) => item.path.includes(sourcePath()))
-                        .map((item) => item.path);
+  tasker(name) {
+    const taskname = this._createName(name)
+    const files = this._getFiles(name)
 
     if (files.length === 0) {
-        return null
+      return null
     }
 
-    gulpTask(taskname, task(files, ''))
-
-    return { taskname, files };
-}
-
-function indexer(files, bucket) {
     for (const file of files) {
-        if (!bucket.includes(file)) {
-            bucket.push(file)
-        }
+      if (!this.index.includes(file)) {
+        GulpTask(taskname, this.task(file))
+      }
     }
 
-    return bucket
-}
+    this._indexer(files)
 
-export { style, task, indexer }
+    return taskname
+  }
+
+  task(file, target = '') {
+    return (cb) => {
+      return src(file)
+        .pipe(gulpIf(isDevelop(), sourcemapInit(sourcemap.init)))
+        .pipe(sass(sassParams).on('error', sass.logError))
+        .pipe(rename(renameParams))
+        .pipe(autoPrefixer(autoPrefixerParams))
+        .pipe(gulpIf(isDevelop(), sourcemapWrite(sourcemap.write)))
+        .pipe(dest(stylesPath(target)))
+        .pipe(reload({ stream: true }))
+    }
+  }
+
+  watchers(cb) {
+    GulpWatch(this.index).on('change', this._onChange(cb))
+  }
+
+  _onChange(cb) {
+    return (filepath, stats) => {
+      return this.task(filepath)(cb)
+    }
+  }
+
+  _indexer(files = []) {
+    for (const file of files) {
+      if (!this.index.includes(file)) {
+        this.index.push(file)
+      }
+    }
+  }
+
+  _createName(name) {
+    return `${name}::styles`
+  }
+
+  _getFiles(name) {
+    return this.structure.getSchema(name).assets.links
+      .filter((item) => item.path.includes(sourcePath()))
+      .map((item) => item.path)
+  }
+}

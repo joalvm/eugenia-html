@@ -8,8 +8,6 @@ import File from 'vinyl'
 export default function compileWebpack(parametters) {
     return through2.obj(function (file, enc, cb) {
         (async (_file) => {
-            const sourceMap = _file.sourceMap || ''
-
             const output = relative(
                 targetPath(),
                 scriptsPath(basename(_file.path).replace('.ts', '.js'))
@@ -18,6 +16,7 @@ export default function compileWebpack(parametters) {
             let compiler = webpack({
                 ...parametters,
                 entry: _file.path,
+                devtool: 'inline-source-map',
                 output: {
                     filename: output
                 }
@@ -33,11 +32,6 @@ export default function compileWebpack(parametters) {
                     path: join(compiler.outputPath, basename(output)),
                     contents
                 })
-
-                if (sourceMap) {
-                    sourceMap.sources = [basename(output), ...sourceMap.sources]
-                    newFile.sourceMap = sourceMap
-                }
 
                 setImmediate(cb, null, newFile)
 

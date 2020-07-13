@@ -1,11 +1,10 @@
 import { basename, resolve, relative } from 'path'
-import { getFile, normalizePath, normalizeScriptPath, normalizeStylePath } from '../helpers'
+import { getFile, resolvePath, templatePath, normalizeScriptPath, normalizeStylePath } from '../helpers'
 import { TEMPLATE_REGEX, INCLUDES_REGEX } from './HtmlStructure'
 
 export default class HtmlPreprocessor {
     constructor(context) {
         this.resourceContext = context
-        this.templatePath = '';
     }
 
     build(content) {
@@ -19,12 +18,8 @@ export default class HtmlPreprocessor {
             return content
         }
 
-        const filename = normalizePath(search[1], this.resourceContext)
-        const template = this._getAssets(
-            getFile(search[1], this.resourceContext),
-            filename,
-            assets
-        )
+        const filename = resolvePath(templatePath(search[1]), this.resourceContext)
+        const template = this._getAssets(getFile(filename), filename, assets)
 
         // Busca los archivos a incluir para el archivo actual
         content = this.includes(
@@ -56,16 +51,16 @@ export default class HtmlPreprocessor {
         html = this._getAssets(html, currentPath, assets);
 
         while ((matches = regEx.exec(html)) !== null) {
-            const filename = normalizePath(matches[1], currentPath)
+            const filename = resolvePath(matches[1], currentPath)
 
             html = html.replace(
                 matches[0],
                 (match) => {
-                    return match.replace('@', '') + '\n' + this.includes(
-                        filename,
-                        getFile(matches[1], currentPath).trim(),
-                        assets
-                    )
+                    return [
+                        match.replace('@', ''),
+                        '\n',
+                        this.includes(filename, getFile(filename).trim(), assets)
+                    ].join('')
                 }
             )
 
@@ -99,7 +94,7 @@ export default class HtmlPreprocessor {
                 continue
             }
 
-            const filepath = normalizePath(src[1], currentPath)
+            const filepath = resolvePath(src[1], currentPath)
 
             assets.scripts.push({
                 name: basename(filepath),
@@ -127,7 +122,7 @@ export default class HtmlPreprocessor {
                 continue
             }
 
-            const filepath = normalizePath(href[1], currentPath)
+            const filepath = resolvePath(href[1], currentPath)
 
             assets.links.push({
                 name: basename(filepath),

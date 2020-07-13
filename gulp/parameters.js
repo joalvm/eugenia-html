@@ -1,8 +1,23 @@
-import { isDevelop, env, targetPath } from "./helpers"
-import { resolve } from "path"
+import { 
+    env,
+    isDevelop,
+    targetPath,
+    reportError,
+    sourcePath,
+    environment,
+    basePath
+} from "./helpers"
+
+export const src = {
+    root: basePath()
+}
+
+export const htmlmin = {
+    collapseWhitespace: true
+}
 
 export const sass = {
-    outputStyle: isDevelop() ? 'expanded' : 'compresed'
+    outputStyle: isDevelop() ? 'expanded' : 'compressed'
 }
 
 export const rename = {
@@ -25,24 +40,19 @@ export const sourcemap = {
 }
 
 export const webpack = {
-    mode: env('APP_ENV'),
-    devtool: 'source-map',
+    mode: environment(),
     watch: false,
     cache: false,
-    target: 'web',
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
         extensions: [".ts", ".tsx", ".js"]
-    },
-    devServer: {
-        lazy: true
     },
     module: {
         rules: [
             {
                 test: /\.ts?$/,
                 exclude: /node_modules/,
-                include: resolve(__dirname, '..', 'src'),
+                include: sourcePath(),
                 use: {
                     loader: require.resolve('ts-loader'),
                     options: {
@@ -55,12 +65,13 @@ export const webpack = {
 }
 
 export const browserSync = {
-    open: env('SERVER_OPEN', false) === 'true',
-    port: env('SERVER_PORT', 8080),
+    open: env('server.open', false),
+    port: env('server.port', 8080),
     server: {
         baseDir: targetPath()
     }
-    // proxy: {
-    //     target: env('SERVER_PROXY', 'http://localhost/')
-    // }
+}
+
+export const plumber = {
+    errorHandler: reportError
 }

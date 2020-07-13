@@ -1,5 +1,5 @@
 import { basename } from 'path'
-import { sourcePath, getFile, normalizePath } from '../helpers'
+import { sourcePath, getFile, resolvePath } from '../helpers'
 import { sync } from 'glob'
 
 export const TEMPLATE_REGEX = /(?:<!--(?:\s+)?)?@template\((.+)\)(?:(?:\s+)?-->)?/gm
@@ -9,7 +9,7 @@ export const ASSETS_REGEX = /(?:<(script|link)).+?(?:(?:src|href)(?:\s+)?=(?:\s+
 export default class HtmlStructure {
     constructor(pattern) {
         this.files = sync(sourcePath(pattern)).map((path) => {
-            const filepath = normalizePath(path, sourcePath())
+            const filepath = resolvePath(path, sourcePath())
             const html = getFile(filepath)
             const templateMatch = this._getTemplatePath(html)
 
@@ -19,7 +19,7 @@ export default class HtmlStructure {
                 return null;
             }
 
-            const templatePath = normalizePath(templateMatch[1], filepath)
+            const templatePath = resolvePath(templateMatch[1], filepath)
             const templateHtml = getFile(templatePath)
 
             this._getAssets(templateHtml, templatePath, assets)
@@ -50,7 +50,7 @@ export default class HtmlStructure {
                 regEx.lastIndex++
             }
 
-            const filename = normalizePath(matches[1], currentPath)
+            const filename = resolvePath(matches[1], currentPath)
 
             paths = [
                 filename,
@@ -70,7 +70,7 @@ export default class HtmlStructure {
                 regex.lastIndex++
             }
 
-            const filepath = normalizePath(matches[2], currentPath)
+            const filepath = resolvePath(matches[2], currentPath)
 
             assets[`${matches[1]}s`].push({
                 name: basename(filepath),
